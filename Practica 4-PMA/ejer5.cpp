@@ -10,6 +10,7 @@ chan impresorasUsu[N](int)
 chan pedidosDire(int)
 chan impresoraDire(int)
 chan impresorasLibres(int)
+chan sync()
 
 process Usuario[id:0..N-1]
 {
@@ -17,6 +18,7 @@ process Usuario[id:0..N-1]
     int impresora
     GenerarDocumento(documento)
     send pedidosUsu(id)
+    send sync()
     receive impresorasUsu[id](impresora)
     Imprimir[impresora](documento)
     send impresorasLibres(impresora)
@@ -37,9 +39,14 @@ process Coordinador::
 {
     int id
     int impresora
+    for i = 0 to 3
+    {
+        send impresorasLibres() //inicializacion del canal de impresoras libres
+    }
     while (true)
     {
         receive impresorasLibres(impresora)
+        recive sync()
         if(not empty(pedidosDire))
         {
             receive pedidosDire(id)
@@ -47,7 +54,7 @@ process Coordinador::
         }
         else
         {
-            receive pedidosUsu(id)  //esta bien no preguntar si esta vacia la cola ? xq puede quedar trabado aca
+            receive pedidosUsu(id)  
             send impresorasUsu[id](impresora)
         }
     }

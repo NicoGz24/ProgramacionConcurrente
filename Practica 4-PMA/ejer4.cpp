@@ -11,16 +11,19 @@ chan pedidosCobro(int)
 chan cabinasCli[N](int)
 chan cabinasLibres(int)
 chan tickets[N](text)
+chan sync() //canal vacio exclusivo para sincronizacion
 
 process Cliente [id:0..N-1]
 {
     int cabina
     text ticket
     send pedidos(id)
+    send sync() 
     receive cabinasClie[id](cabina)
     UsarCabina(cabina)
     send cabinasLibres(cabina)
     send pedidosCobro(id)
+    send sync()
     receive tickets[id](ticket)
 }
 
@@ -29,8 +32,13 @@ process Empleado::
     int idCli
     text ticket
     int cabina
+    for i= 0 to 10
+    {
+        send cabinasLibres[i]() //inicializacion del canal de cabinas libres
+    }
     while(true)
     {
+        receive sync()
         if(not empty(pedidosCobro))
         {
             receive pedidosCobro(idCli)
@@ -38,13 +46,20 @@ process Empleado::
             GenerarTicket(ticket)
             send tickets[idCli](ticket)
         }
-        else  // este else no podria generar busy waiting ?? si estan todas las cabinas ocupadas y no hay nadie para pagar, se queda loopeando en el while
+        else 
         {
             if (not empty(cabinasLibres))
             {
                 receive cabinasLibres(cabina)
                 receive pedidos(idCli)
                 send cabinasCli[idCli](cabina)
+            }
+            else
+            {
+                receive pedidosCobro(idCli)
+                Cobrar(idCli)
+                GenerarTicket(ticket)
+                send tickets[idCli](ticket)
             }
         }
     }
